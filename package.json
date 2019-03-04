@@ -1,0 +1,19 @@
+{
+  "name": "thorin-plugin-nats",
+  "author": "UNLOQ Systems",
+  "version": "1.0.0",
+  "dependencies": {
+    "nats": "^1.2.2"
+  },
+  "description": "Thorin.js nats.io wrapper",
+  "main": "index.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Thorinjs/Thorin-plugin-nats"
+  },
+  "homepage": "http://thorinjs.com",
+  "bugs": {
+    "url": "https://github.com/Thorinjs/Thorin-plugin-nats/issues"
+  }
+}
