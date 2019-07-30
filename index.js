@@ -1,6 +1,6 @@
 'use strict';
 
-const initNast = require('./lib/client');
+const initNats = require('./lib/client');
 
 module.exports = function (thorin, opt, pluginName) {
   const defaultOpt = {
@@ -17,6 +17,7 @@ module.exports = function (thorin, opt, pluginName) {
       maxReconnectAttempts: -1,
       reconnectWait: 1000
     },
+    tls: {} // .key, .cert, .ca
   };
   opt = thorin.util.extend(defaultOpt, opt);
   const logger = thorin.logger(defaultOpt.logger);
@@ -43,8 +44,11 @@ module.exports = function (thorin, opt, pluginName) {
   if (opt.username) cOpt.user = opt.username;
   if (opt.password) cOpt.pass = opt.password;
   if (opt.token) cOpt.token = opt.token;
+  if (typeof opt.tls === 'object' && opt.tls && opt.tls.key && opt.tls.cert) {
+    cOpt.tls = opt.tls;
+  }
 
-  const NatsClient = initNast(thorin, opt, logger);
+  const NatsClient = initNats(thorin, opt, logger);
 
   const natsObj = {};
 
@@ -52,6 +56,7 @@ module.exports = function (thorin, opt, pluginName) {
    * On thorin app launch, connect to server.
    * */
   natsObj.run = async (done) => {
+    if (natsObj.client) return done();
     try {
       let clientObj = await natsObj.connect();
       natsObj.client = clientObj; // the default client.
@@ -63,7 +68,7 @@ module.exports = function (thorin, opt, pluginName) {
   };
 
   /**
-   * Connet to the nats server, creating a client instance.
+   * Connect to the nats server, creating a client instance.
    * Returns a promise.
    * */
   natsObj.connect = async (opt = {}) => {
