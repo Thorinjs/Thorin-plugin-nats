@@ -34,7 +34,7 @@ module.exports = function (thorin, opt, pluginName) {
       throw thorin.error('PLUGIN.NATS', 'URL Configuration must be an array of nats server URLs');
     }
     if (u.indexOf('://') === -1) u = 'nats://' + u;
-    if (u.lastIndexOf(':') !== 5) {
+    if (u.indexOf(':') === -1) {
       u += ':4222';
     }
     opt.url[i] = u;
@@ -47,8 +47,7 @@ module.exports = function (thorin, opt, pluginName) {
   if (typeof opt.tls === 'object' && opt.tls && opt.tls.key && opt.tls.cert) {
     cOpt.tls = opt.tls;
   }
-
-  const NatsClient = initNats(thorin, opt, logger);
+  const NatsClient = initNats(thorin, cOpt, logger);
 
   const natsObj = {};
 
@@ -73,9 +72,9 @@ module.exports = function (thorin, opt, pluginName) {
    * */
   natsObj.connect = async (opt = {}) => {
     let connectOpt = thorin.util.extend(cOpt, opt);
-    let clientObj = new NatsClient(connectOpt);
     if (connectOpt.servers.length === 0) throw thorin.error('PLUGIN.NATS', 'At least one NATS server is required');
-    let natsObj = await clientObj.connect();
+    let clientObj = new NatsClient();
+    let natsObj = await clientObj.connect(connectOpt);
     return natsObj;
   };
 
