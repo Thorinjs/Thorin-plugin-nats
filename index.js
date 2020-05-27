@@ -1,6 +1,7 @@
 'use strict';
 
-const initNats = require('./lib/client');
+const initNats = require('./lib/client'),
+  initChannel = require('./lib/channel');
 
 module.exports = function (thorin, opt, pluginName) {
   const defaultOpt = {
@@ -16,6 +17,11 @@ module.exports = function (thorin, opt, pluginName) {
       json: true,
       maxReconnectAttempts: -1,
       reconnectWait: 1000
+    },
+    channel: {
+      prefix: 'trpc.',   // the subscription prefix for all our channels
+      timeout: 3000, // max timeout for RPC dispatch requests.
+      debug: false  // if set to true, we will log incoming dispatches/publishes.
     },
     tls: {} // .key, .cert, .ca
   };
@@ -47,7 +53,8 @@ module.exports = function (thorin, opt, pluginName) {
   if (typeof opt.tls === 'object' && opt.tls && opt.tls.key && opt.tls.cert) {
     cOpt.tls = opt.tls;
   }
-  const NatsClient = initNats(thorin, cOpt, logger);
+  const NatsClient = initNats(thorin, cOpt, logger),
+    NatsChannel = initChannel(thorin, opt, logger);
 
   const natsObj = {};
 
@@ -66,6 +73,9 @@ module.exports = function (thorin, opt, pluginName) {
     done();
   };
 
+  let channels = {},
+    pendingChannels = [];
+
   /**
    * Connect to the nats server, creating a client instance.
    * Returns a promise.
@@ -75,8 +85,46 @@ module.exports = function (thorin, opt, pluginName) {
     if (connectOpt.servers.length === 0) throw thorin.error('PLUGIN.NATS', 'At least one NATS server is required');
     let clientObj = new NatsClient();
     let natsObj = await clientObj.connect(connectOpt);
+    for (let i = 0, len = pendingChannels.length; i < len; i++) {
+      pendingChannels[i].client = natsObj;
+    }
+    pendingChannels = [];
     return natsObj;
   };
+
+  /**
+   * Creates or retrieves the specified NATS Channel object.
+   * @Arguments
+   *  - name - the channel name to use.
+   *  - cOpt.unique - if set to true, we will place this channel into a unique queue group, and messages will be delivered to only one subscriber.
+   * */
+  natsObj.channel = (name, cOpt = {}) => {
+    let cObj = channels[name];
+    if (!cObj) {
+      cObj = natsObj.channel.create(name, cOpt);
+      channels[name] = cObj;
+      cObj.on('destroy', () => {
+        delete channels[name];
+      });
+    }
+    return cObj;
+  }
+  /* expose our NatsChannel class */
+  natsObj.channel.create = (name, cOpt) => {
+    let cObj = new NatsChannel(name, cOpt);
+    if (natsObj.client) {
+      cObj.client = natsObj.client;
+    } else {
+      pendingChannels.push(cObj);
+    }
+    cObj.on('destroy', () => {
+      let cix = pendingChannels.indexOf(cObj);
+      if (cix !== -1) {
+        pendingChannels.splice(cix, 1);
+      }
+    });
+    return cObj;
+  }
 
   return natsObj;
 };
