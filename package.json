@@ -1,9 +1,9 @@
 {
   "name": "thorin-plugin-nats",
   "author": "UNLOQ Systems",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "dependencies": {
-    "nats": "1.4.9"
+    "nats": "1.4.12"
   },
   "description": "Thorin.js nats.io wrapper",
   "main": "index.js",
