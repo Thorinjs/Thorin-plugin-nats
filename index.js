@@ -64,8 +64,7 @@ module.exports = function (thorin, opt, pluginName) {
   natsObj.run = async (done) => {
     if (natsObj.client) return done();
     try {
-      let clientObj = await natsObj.connect();
-      natsObj.client = clientObj; // the default client.
+      await natsObj.getClient();  // the default client.
     } catch (e) {
       logger.warn(`Could not connect to nats servers`);
       logger.debug(e);
@@ -74,7 +73,26 @@ module.exports = function (thorin, opt, pluginName) {
   };
 
   let channels = {},
-    pendingChannels = [];
+    isConnecting = false,
+    pendingChannels = [],
+    pendingClients = [];
+
+  /**
+   * Makes sure that we have a connected client, and returns it.
+   * */
+  natsObj.getClient = async () => {
+    if (isConnecting) {
+      return new Promise((resolve) => pendingClients.push(resolve));
+    }
+    if (natsObj.client) return natsObj.client;
+    isConnecting = true;
+    let clientObj = await natsObj.connect();
+    isConnecting = false;
+    natsObj.client = clientObj;
+    pendingClients.forEach(resolve => resolve(clientObj));
+    pendingClients = [];
+    return clientObj;
+  }
 
   /**
    * Connect to the nats server, creating a client instance.
