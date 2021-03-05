@@ -18,6 +18,7 @@ module.exports = function (thorin, opt, pluginName) {
       maxReconnectAttempts: -1,
       reconnectWait: 1000
     },
+    required: true,
     channel: {
       prefix: 'trpc.',   // the subscription prefix for all our channels
       timeout: 3000, // max timeout for RPC dispatch requests.
@@ -66,8 +67,10 @@ module.exports = function (thorin, opt, pluginName) {
     try {
       await natsObj.getClient();  // the default client.
     } catch (e) {
-      logger.warn(`Could not connect to nats servers`);
-      logger.debug(e);
+      if (opt.required) {
+        logger.warn(`Could not connect to nats servers`);
+        logger.debug(e);
+      }
     }
     done();
   };
